@@ -18,6 +18,12 @@
 python3 export_apple_music_library.py
 ```
 
+导出后预览前 10 行：
+
+```bash
+python3 export_apple_music_library.py --sample 10
+```
+
 切换“类别”来源字段：
 
 ```bash

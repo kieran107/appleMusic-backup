@@ -54,6 +54,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Keep the temporary Music XML export next to the CSV file.",
     )
+    parser.add_argument(
+        "--sample",
+        type=int,
+        default=0,
+        help="Print the first N exported rows in the terminal after writing the CSV.",
+    )
     return parser.parse_args()
 
 
@@ -224,6 +230,29 @@ def write_csv(rows: list[dict[str, str]], output_path: Path, custom_field: str, 
             )
 
 
+def print_sample(rows: list[dict[str, str]], custom_field: str, custom_header: str, limit: int) -> None:
+    if limit <= 0:
+        return
+
+    headers = ["歌曲名", "歌手", "专辑", "所在歌单", custom_header]
+    sample_rows = rows[:limit]
+    printable_rows = [
+        {
+            "歌曲名": row["歌曲名"],
+            "歌手": row["歌手"],
+            "专辑": row["专辑"],
+            "所在歌单": row["所在歌单"],
+            custom_header: row.get(f"_{custom_field}", ""),
+        }
+        for row in sample_rows
+    ]
+
+    print(f"Sample preview ({len(printable_rows)} row(s)):")
+    print("\t".join(headers))
+    for row in printable_rows:
+        print("\t".join(row[header] for header in headers))
+
+
 def main() -> int:
     args = parse_args()
 
@@ -245,6 +274,7 @@ def main() -> int:
                 args.custom_field,
                 f"(Apple Music field: {FIELD_ALIASES[args.custom_field]})",
             )
+        print_sample(rows, args.custom_field, args.custom_header, args.sample)
         return 0
     except Exception as exc:
         print(exc, file=sys.stderr)
