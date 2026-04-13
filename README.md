@@ -8,29 +8,8 @@
 - 歌手
 - 专辑
 - 类别
-- 所在歌单
 
 ## 手动备份
-
-仅导出 CSV：
-
-```bash
-python3 export_apple_music_library.py
-```
-
-导出后预览前 10 行：
-
-```bash
-python3 export_apple_music_library.py --sample 10
-```
-
-切换“类别”来源字段：
-
-```bash
-python3 export_apple_music_library.py --custom-field grouping
-python3 export_apple_music_library.py --custom-field comments
-python3 export_apple_music_library.py --custom-field work
-```
 
 手动执行一次完整备份：
 
