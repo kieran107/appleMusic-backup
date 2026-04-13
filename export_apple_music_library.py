@@ -96,17 +96,20 @@ def load_tracks_from_xml(xml_path: Path) -> list[dict[str, str]]:
         library = plistlib.load(handle)
 
     tracks = library.get("Tracks", {})
+    track_to_playlists = build_track_playlist_map(library.get("Playlists", []))
     rows: list[dict[str, str]] = []
-    for track in tracks.values():
+    for track_key, track in tracks.items():
         name = clean_value(track.get("Name"))
         if not name:
             continue
 
+        track_id = clean_value(track.get("Track ID")) or clean_value(track_key)
         rows.append(
             {
                 "歌曲名": name,
                 "歌手": clean_value(track.get("Artist")),
                 "专辑": clean_value(track.get("Album")),
+                "所在歌单": " | ".join(track_to_playlists.get(track_id, [])),
                 "_genre": clean_value(track.get("Genre")),
                 "_grouping": clean_value(track.get("Grouping")),
                 "_comments": clean_value(track.get("Comments")),
@@ -125,11 +128,89 @@ def clean_value(value: object) -> str:
     return str(value).strip()
 
 
+def build_track_playlist_map(playlists: object) -> dict[str, list[str]]:
+    if not isinstance(playlists, list):
+        return {}
+
+    playlist_index: dict[str, dict[object, object]] = {}
+    for playlist in playlists:
+        if not isinstance(playlist, dict):
+            continue
+        persistent_id = clean_value(playlist.get("Playlist Persistent ID"))
+        if persistent_id:
+            playlist_index[persistent_id] = playlist
+
+    track_to_playlists: dict[str, set[str]] = {}
+    for playlist in playlists:
+        if not isinstance(playlist, dict) or not should_include_playlist(playlist):
+            continue
+
+        playlist_name = build_playlist_path(playlist, playlist_index)
+        if not playlist_name:
+            continue
+
+        for item in playlist.get("Playlist Items", []):
+            if not isinstance(item, dict):
+                continue
+            track_id = clean_value(item.get("Track ID"))
+            if not track_id:
+                continue
+            track_to_playlists.setdefault(track_id, set()).add(playlist_name)
+
+    return {
+        track_id: sorted(names, key=str.casefold)
+        for track_id, names in track_to_playlists.items()
+    }
+
+
+def should_include_playlist(playlist: dict[object, object]) -> bool:
+    if not clean_value(playlist.get("Name")):
+        return False
+
+    if playlist.get("Folder") or playlist.get("Master"):
+        return False
+
+    if playlist.get("Distinguished Kind") is not None:
+        return False
+
+    special_flags = (
+        "Music",
+        "Movies",
+        "TV Shows",
+        "Podcasts",
+        "Audiobooks",
+        "Purchased Music",
+    )
+    return not any(playlist.get(flag) for flag in special_flags)
+
+
+def build_playlist_path(
+    playlist: dict[object, object],
+    playlist_index: dict[str, dict[object, object]],
+) -> str:
+    parts = [clean_value(playlist.get("Name"))]
+    parent_id = clean_value(playlist.get("Parent Persistent ID"))
+    visited: set[str] = set()
+
+    while parent_id and parent_id not in visited:
+        visited.add(parent_id)
+        parent = playlist_index.get(parent_id)
+        if parent is None:
+            break
+
+        parent_name = clean_value(parent.get("Name"))
+        if parent_name:
+            parts.append(parent_name)
+        parent_id = clean_value(parent.get("Parent Persistent ID"))
+
+    return " / ".join(reversed([part for part in parts if part]))
+
+
 def write_csv(rows: list[dict[str, str]], output_path: Path, custom_field: str, custom_header: str) -> None:
     key_name = f"_{custom_field}"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", newline="", encoding="utf-8-sig") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["歌曲名", "歌手", "专辑", custom_header])
+        writer = csv.DictWriter(handle, fieldnames=["歌曲名", "歌手", "专辑", "所在歌单", custom_header])
         writer.writeheader()
         for row in rows:
             writer.writerow(
@@ -137,6 +218,7 @@ def write_csv(rows: list[dict[str, str]], output_path: Path, custom_field: str, 
                     "歌曲名": row["歌曲名"],
                     "歌手": row["歌手"],
                     "专辑": row["专辑"],
+                    "所在歌单": row["所在歌单"],
                     custom_header: row.get(key_name, ""),
                 }
             )
