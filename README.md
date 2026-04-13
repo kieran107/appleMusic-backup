@@ -7,12 +7,12 @@
 - 歌曲名
 - 歌手
 - 专辑
-- 所在歌单
 - 类别
+- 所在歌单
 
-## Quick Start
+## 手动备份
 
-手动导出：
+仅导出 CSV：
 
 ```bash
 python3 export_apple_music_library.py
@@ -32,25 +32,31 @@ python3 export_apple_music_library.py --custom-field comments
 python3 export_apple_music_library.py --custom-field work
 ```
 
-初始化远程仓库：
+手动执行一次完整备份：
+
+- 导出 CSV
+- 检查变更
+- 自动 `git add / commit / push`
+
+```bash
+./backup_apple_music_weekly.sh
+```
+
+## 初始化仓库
+
+首次配置远程仓库：
 
 ```bash
 ./setup_apple_music_git_backup.sh <your-git-remote-url>
 ```
 
-手动跑一次备份：
-
-```bash
-./backup_apple_music_weekly.sh
-```
+## 自动备份
 
 安装自动任务：
 
 ```bash
 ./install_apple_music_launch_agent.sh
 ```
-
-## 自动备份策略
 
 - 触发时间：周二、周三、周四 `20:00`
 - 执行规则：同一周只成功执行一次
