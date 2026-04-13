@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+launchd-apple-music-backup.log
+launchd-apple-music-backup.error.log
