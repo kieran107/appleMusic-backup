@@ -84,8 +84,15 @@ python3 export_apple_music_library.py \
 
 默认计划时间是：
 
-- 每周一
-- 上午 `09:00`
+- 周二、周三、周四
+- 晚上 `20:00`
+
+为了实现“这周只备份一次，但周二没开机就顺延到周三、周四”，备份脚本会记录本周是否已经成功执行过：
+
+- 如果周二 `20:00` 成功跑了，本周后面的触发会自动跳过
+- 如果周二没开机，周三 `20:00` 会接手
+- 如果周三也没开机，周四 `20:00` 会再尝试一次
+- 如果本周 CSV 没变化，也会记录为“本周已检查”，避免重复运行
 
 日志文件位于项目目录：
 
@@ -115,13 +122,15 @@ flowchart TD
     E --> F["生成 apple_music_songs.csv"]
 
     F --> G["运行 backup_apple_music_weekly.sh"]
-    G --> H["git add CSV"]
+    G --> Q{"本周已成功执行？"}
+    Q -- "是" --> J["结束，不提交"]
+    Q -- "否" --> H["git add CSV"]
     H --> I{"CSV 有变化？"}
-    I -- "否" --> J["结束，不提交"]
+    I -- "否" --> J
     I -- "是" --> K["git commit"]
     K --> L["git push 到 GitHub"]
 
-    M["launchd 每周一 09:00"] --> G
+    M["launchd 周二/周三/周四 20:00"] --> G
     N["install_apple_music_launch_agent.sh"] --> M
     O["setup_apple_music_git_backup.sh"] --> P["初始化 Git 仓库并配置 origin"]
     P --> G
@@ -131,4 +140,5 @@ flowchart TD
 
 - 这个方案依赖本机的 `Music.app`，因此更适合在自己的 Mac 上长期运行。
 - 如果 CSV 没变化，自动备份脚本不会产生空提交。
+- 当前策略是“周二优先，周三/周四补位，同一周只成功执行一次”。
 - 如果你修改了备份时间，可以编辑 `com.zzh.apple-music-weekly-backup.plist` 后重新执行 `./install_apple_music_launch_agent.sh`。

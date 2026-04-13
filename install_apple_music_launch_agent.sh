@@ -23,4 +23,4 @@ launchctl enable "$SERVICE_ID"
 
 echo "Installed weekly launch agent:"
 echo "  $TARGET_PLIST"
-echo "Schedule: every Monday at 09:00"
+echo "Schedule: Tuesday to Thursday at 20:00, once per week after the first successful run"
